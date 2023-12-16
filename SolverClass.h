@@ -5,6 +5,7 @@
 #include <stack>
 #include <tuple>
 #include <unordered_set>
+#include <queue>
 
 class Clause;
 class Literal;
@@ -17,12 +18,13 @@ public:
     bool isFree = true;
     std::unordered_set<Clause*> pos_occ;
     std::unordered_set<Clause*> neg_occ;
-//    int branching_level_dp;
-//    Clause* reason;
+    int branching_level_dp;
+    Clause* reason;
 
     static int count;
     static std::vector<Literal> list;
     static std::unordered_set<int> id_list;
+    static std::queue<Literal*> unit_queue;
 
     explicit Literal(int id) : id(id) {
         count++;
@@ -31,6 +33,7 @@ public:
     };
     void setFree();
     void assignValue(bool);
+    void unassignValue();
 
 private:
 
@@ -40,8 +43,9 @@ class Clause {
 public:
     std::vector<Literal*> pos_literals_list;
     std::vector<Literal*> neg_literals_list;
-    int active_literals_count = 0;
-//    Literal* sat_by;
+    std::unordered_set<Literal*> unset_literals = {};
+    std::vector<Literal*> sat_by = {};
+    bool SAT = false;
 
     static int count;
     static std::vector<Clause> list;
@@ -51,8 +55,8 @@ public:
         list.push_back(*this);
     };
     void appendLiteral(Literal*, bool);
-    bool isSAT();
-private:
+    bool checkSAT();
+    int getUnsetLiteralsCount() const;
 
 };
 
