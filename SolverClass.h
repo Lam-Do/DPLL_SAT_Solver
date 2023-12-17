@@ -6,6 +6,7 @@
 #include <tuple>
 #include <unordered_set>
 #include <queue>
+#include <algorithm>
 
 class Clause;
 class Literal;

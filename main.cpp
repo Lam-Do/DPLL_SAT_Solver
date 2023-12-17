@@ -19,6 +19,7 @@ void unitPropagation();
 void backtracking();
 void simplify();
 void pureLiteralsEliminate();
+void checkBasicUNSAT();
 
 int main() {
     vector<vector<int>> formula = {
@@ -57,7 +58,14 @@ void parse(const vector<vector<int>>& formula) {
 }
 
 void unitPropagation() {
-    // TODO: find and propagate
+    // TODO: find and propagate by assigning value
+    while (!(Literal::unit_queue.empty())) {
+        Literal* next_literal = Literal::unit_queue.front();
+        Clause* unit_clause = next_literal->reason;
+        if (find(unit_clause->pos_literals_list.begin(), unit_clause->pos_literals_list.end(), next_literal) != unit_clause->pos_literals_list.end()) {
+            next_literal->assignValue(true);
+        } else next_literal->assignValue(false) ;
+    }
 }
 
 void backtracking() {
@@ -70,4 +78,9 @@ void simplify() {
 
 void pureLiteralsEliminate() {
     // TODO: assign value to all pure literal with forced assignment
+}
+
+void checkBasicUNSAT(){
+    // TODO: check basic unSAT condition
+    // TODO: check a clause contain a literal both pos and neg
 }
