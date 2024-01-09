@@ -11,9 +11,10 @@ vector<Clause> Clause::list = {};
 stack<Assignment> Assignment::stack = {};
 unordered_set<int> Literal::id_list = {};
 queue<Literal*> Literal::unit_queue= {};
+bool Clause::conflict = false;
 
 // Declare function
-void readDIMACS(string& path);
+vector<vector<int>> readDIMACS(string& path);
 void parse(const vector<vector<int>>& formula);
 void unitPropagation();
 void backtracking();
@@ -34,6 +35,12 @@ int main() {
     cout << Literal::count << " " << Clause::count << endl;
 
     return 0;
+}
+
+vector<vector<int>> readDIMACS(string& path) {
+    vector<vector<int>> formula;
+
+    return formula;
 }
 
 void parse(const vector<vector<int>>& formula) {
@@ -58,10 +65,12 @@ void parse(const vector<vector<int>>& formula) {
 }
 
 void unitPropagation() {
-    // TODO: find and propagate by assigning value
+    // find and propagate all literal in queue by assigning value
     while (!(Literal::unit_queue.empty())) {
         Literal* next_literal = Literal::unit_queue.front();
+        Literal::unit_queue.pop();
         Clause* unit_clause = next_literal->reason;
+        // check if the literal is positive or negative in the unit clause to assign fitting value
         if (find(unit_clause->pos_literals_list.begin(), unit_clause->pos_literals_list.end(), next_literal) != unit_clause->pos_literals_list.end()) {
             next_literal->assignValue(true);
         } else next_literal->assignValue(false) ;

@@ -7,58 +7,86 @@ void Literal::setFree() {
 void Literal::assignValue(bool value) {
     //assign value and free status
     if (!this->isFree) {
-        //  happen when the same literal got push to queue more than once
-        //  when more than one clause became unit and have that same last unset literal
-        // TODO: do nothing, skip assigning value process
+        // literals could be pushed to queue more than once when they are the last unset literal of more than one clause.
+        // do nothing, skip assigning value process if the literal is not free
     } else {
         this->isFree = false;
-    }
-    this->value = value;
+        this->value = value;
 
-    // change related clauses accordingly
-    std::unordered_set<Clause*> sat_clauses;
-    std::unordered_set<Clause*> unsat_clauses;
-    if (value == true) {
-        for (auto clause : this->pos_occ) {
-            clause->SAT = true;
-            clause->sat_by.push_back(this);
-            clause->unset_literals.erase(this);
-        }
-        for (auto clause : this->neg_occ) {
-            clause->unset_literals.erase(this);
-            if (clause->getUnsetLiteralsCount() == 1) {
-                auto free_literal = *(clause->unset_literals.begin()); // Last unset literal in the list
-                Literal::unit_queue.push(free_literal);
-                free_literal->reason = clause;
+        // change related clauses accordingly
+        //std::unordered_set<Clause*> sat_clauses;
+        //std::unordered_set<Clause*> unsat_clauses;
+        if (value == true) {
+            for (auto clause : this->pos_occ) {
+                clause->unset_literals.erase(this);
+                clause->SAT = true;
+                clause->sat_by.insert(this);
             }
-            if (clause->getUnsetLiteralsCount() == 0) {
-                // TODO: report conflict
+            for (auto clause : this->neg_occ) {
+                clause->unset_literals.erase(this);
+                if (clause->getUnsetLiteralsCount() == 1) {
+                    auto free_literal = *(clause->unset_literals.begin()); // Last unset literal in the list
+                    Literal::unit_queue.push(free_literal);
+                    free_literal->reason = clause;
+                }
+                if (clause->getUnsetLiteralsCount() == 0) {
+                    //report conflict
+                    if (!clause->SAT) {
+                        Clause::conflict = true;
+                    }
+                }
             }
-        }
-    } else {
-        for (auto clause : this->neg_occ) {
-            clause->SAT = true;
-            clause->sat_by.push_back(this);
-            clause->unset_literals.erase(this);
-        }
-        for (auto clause : this->pos_occ) {
-            clause->unset_literals.erase(this);
-            if (clause->getUnsetLiteralsCount() == 1) {
-                auto free_literal = *(clause->unset_literals.begin());
-                Literal::unit_queue.push(free_literal); //
-                free_literal->reason = clause;
+        } else {
+            for (auto clause : this->neg_occ) {
+                clause->unset_literals.erase(this);
+                clause->SAT = true;
+                clause->sat_by.insert(this);
             }
-            if (clause->getUnsetLiteralsCount() == 0) {
-                // TODO: check SAT status, if unSAT report conflict
+            for (auto clause : this->pos_occ) {
+                clause->unset_literals.erase(this);
+                if (clause->getUnsetLiteralsCount() == 1) {
+                    auto free_literal = *(clause->unset_literals.begin());
+                    Literal::unit_queue.push(free_literal); //
+                    free_literal->reason = clause;
+                }
+                if (clause->getUnsetLiteralsCount() == 0) {
+                    // check SAT status, if unSAT report conflict
+                    if (!clause->SAT) {
+                        Clause::conflict = true;
+                    }
+                }
             }
         }
     }
 }
 
 void Literal::unassignValue() {
-    // TODO: Unassign
+    this->setFree();
+    this->reason = nullptr;
+    if (this->value == true) {
+        for (auto clause : this->pos_occ) {
+            clause->sat_by.erase(this);
+            if (clause->sat_by.empty()) {
+                clause->SAT = false;
+            }
+            clause->unset_literals.insert(this);
+        }
+        for (auto clause : this->neg_occ) {
+            clause->unset_literals.insert(this);
+        }
+    } else {
+        for (auto clause : this->neg_occ) {
+            clause->sat_by.erase(this);
+            if (clause->sat_by.empty()) {
+                clause->SAT = false;
+            }
+            clause->unset_literals.insert(this);
+        }
+        for (auto clause : this->pos_occ) {
+            clause->unset_literals.insert(this);
+        }
+    }
 }
-
 
 void Clause::appendLiteral(Literal* literal_ad, bool isPos) {
     if (isPos) {
