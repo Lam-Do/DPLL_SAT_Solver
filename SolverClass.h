@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <queue>
 #include <algorithm>
+#include <unordered_map>
 
 class Clause;
 class Literal;
@@ -23,13 +24,13 @@ public:
     Clause* reason = nullptr;
 
     static int count;
-    static std::vector<Literal> list;
+    static std::unordered_map<int, Literal*> list;
     static std::unordered_set<int> id_list;
     static std::queue<Literal*> unit_queue;
 
     explicit Literal(int id) : id(id) {
         count++;
-        list.push_back(*this);
+        list[this->id] = this;
         id_list.insert(id);
     };
     void setFree();
@@ -49,12 +50,12 @@ public:
     bool SAT = false;
 
     static int count;
-    static std::vector<Clause> list;
+    static std::vector<Clause*> list;
     static bool conflict;
 
     Clause() {
         count++;
-        list.push_back(*this);
+        list.push_back(this);
     };
     void appendLiteral(Literal*, bool);
     bool checkSAT();

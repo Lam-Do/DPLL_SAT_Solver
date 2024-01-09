@@ -6,8 +6,8 @@ using namespace std;
 // Declare static variable
 int Literal::count = 0;
 int Clause::count = 0;
-vector<Literal> Literal::list = {};
-vector<Clause> Clause::list = {};
+unordered_map<int, Literal*> Literal::list = {};
+vector<Clause*> Clause::list = {};
 stack<Assignment> Assignment::stack = {};
 unordered_set<int> Literal::id_list = {};
 queue<Literal*> Literal::unit_queue= {};
@@ -49,15 +49,24 @@ void parse(const vector<vector<int>>& formula) {
         for (const auto l : c) {
             if (Literal::id_list.count(abs(l)) == 0) {
                 if (l >= 0) {
-                    Literal literal (abs(l));
+                    Literal new_literal (abs(l));
                     // connecting literals and clauses
-                    literal.pos_occ.insert(&new_clause);
-                    new_clause.appendLiteral(&literal, true);
+                    new_literal.pos_occ.insert(&new_clause);
+                    new_clause.appendLiteral(&new_literal, true);
                 } else {
                     Literal literal (abs(l));
                     // connecting literals and clauses
                     literal.neg_occ.insert(&new_clause);
                     new_clause.appendLiteral(&literal, false);
+                }
+            } else {
+                Literal* current_literal = Literal::list[abs(l)];
+                if (l >= 0) {
+                    current_literal->pos_occ.insert(&new_clause);
+                    new_clause.appendLiteral(current_literal, true);
+                } else {
+                    current_literal->neg_occ.insert(&new_clause);
+                    new_clause.appendLiteral(current_literal, false);
                 }
             }
         }
@@ -86,7 +95,7 @@ void simplify() {
 }
 
 void pureLiteralsEliminate() {
-    // TODO: assign value to all pure literal with forced assignment
+    // TODO: assign value to all pure literal with forced assignment, pureLit can appear after clauses are SAT and remove from consideration.
 }
 
 void checkBasicUNSAT(){
