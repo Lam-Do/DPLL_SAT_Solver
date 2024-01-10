@@ -20,8 +20,11 @@ void unitPropagation();
 void backtracking();
 void simplify();
 void pureLiteralsEliminate();
+void branching();
 void checkBasicUNSAT();
 
+// Global definition
+bool isForced = true;
 int main() {
     vector<vector<int>> formula = {
             {1, 2, 3},
@@ -44,7 +47,7 @@ vector<vector<int>> readDIMACS(string& path) {
 }
 
 void parse(const vector<vector<int>>& formula) {
-    for (const auto c : formula){
+    for (const auto& c : formula){
         Clause new_clause;
         for (const auto l : c) {
             if (Literal::id_list.count(abs(l)) == 0) {
@@ -79,7 +82,6 @@ void unitPropagation() {
         Literal* next_literal = Literal::unit_queue.front();
         Literal::unit_queue.pop();
         Clause* unit_clause = next_literal->reason;
-        bool isForced = true;
         // check if the literal is positive or negative in the unit clause to assign fitting value
         if (find(unit_clause->pos_literals_list.begin(), unit_clause->pos_literals_list.end(), next_literal) != unit_clause->pos_literals_list.end()) {
             next_literal->assignValue(true, isForced);
@@ -89,6 +91,15 @@ void unitPropagation() {
 
 void backtracking() {
     // TODO: Undo assignment
+    while (Assignment::stack.top()->isForced) {
+        Assignment::stack.top()->assigned_literal->unassignValue();
+        Assignment::stack.pop();
+    }
+    Literal* top_literal = Assignment::stack.top()->assigned_literal;
+    bool old_value = top_literal->value;
+    top_literal->unassignValue();
+    Assignment::stack.pop();
+    top_literal->assignValue(!old_value, isForced); // no need to push new assignment here since assignValue() does it.
 }
 
 void simplify() {
@@ -97,6 +108,10 @@ void simplify() {
 
 void pureLiteralsEliminate() {
     // TODO: assign value to all pure literal with forced assignment, pureLit can appear after clauses are SAT and remove from consideration.
+}
+
+void branching() {
+    // TODO: branching in case unit_queue is empty (no unit clause) and also no conflict.
 }
 
 void checkBasicUNSAT(){
