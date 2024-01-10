@@ -4,7 +4,7 @@ void Literal::setFree() {
     this->isFree = true;
 }
 
-void Literal::assignValue(bool value) {
+void Literal::assignValue(bool value, bool isForced) {
     //assign value and free status
     if (!this->isFree) {
         // literals could be pushed to queue more than once when they are the last unset literal of more than one clause.
@@ -12,6 +12,7 @@ void Literal::assignValue(bool value) {
     } else {
         this->isFree = false;
         this->value = value;
+        Assignment new_assign (isForced, this);
 
         // change related clauses accordingly
         //std::unordered_set<Clause*> sat_clauses;
@@ -24,16 +25,14 @@ void Literal::assignValue(bool value) {
             }
             for (auto clause : this->neg_occ) {
                 clause->unset_literals.erase(this);
-                if (clause->getUnsetLiteralsCount() == 1) {
+                if (clause->getUnsetLiteralsCount() == 1 && !clause->SAT) {
                     auto free_literal = *(clause->unset_literals.begin()); // Last unset literal in the list
                     Literal::unit_queue.push(free_literal);
                     free_literal->reason = clause;
                 }
-                if (clause->getUnsetLiteralsCount() == 0) {
+                if (clause->getUnsetLiteralsCount() == 0 && !clause->SAT) {
                     //report conflict
-                    if (!clause->SAT) {
-                        Clause::conflict = true;
-                    }
+                    Clause::conflict = true;
                 }
             }
         } else {
@@ -44,16 +43,14 @@ void Literal::assignValue(bool value) {
             }
             for (auto clause : this->pos_occ) {
                 clause->unset_literals.erase(this);
-                if (clause->getUnsetLiteralsCount() == 1) {
+                if (clause->getUnsetLiteralsCount() == 1 && !clause->SAT) {
                     auto free_literal = *(clause->unset_literals.begin());
                     Literal::unit_queue.push(free_literal); //
                     free_literal->reason = clause;
                 }
-                if (clause->getUnsetLiteralsCount() == 0) {
+                if (clause->getUnsetLiteralsCount() == 0 && !clause->SAT) {
                     // check SAT status, if unSAT report conflict
-                    if (!clause->SAT) {
-                        Clause::conflict = true;
-                    }
+                    Clause::conflict = true;
                 }
             }
         }

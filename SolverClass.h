@@ -34,7 +34,7 @@ public:
         id_list.insert(id);
     };
     void setFree();
-    void assignValue(bool);
+    void assignValue(bool,bool);
     void unassignValue();
 
 private:
@@ -67,9 +67,9 @@ struct Assignment {
     bool isForced;
     Literal* assigned_literal;
 
-    Assignment(bool status, Literal* lit) : isForced(status), assigned_literal(lit) {stack.push(*this);};
+    Assignment(bool status, Literal* lit) : isForced(status), assigned_literal(lit) {stack.push(this);};
 
-    static std::stack<Assignment> stack;
+    static std::stack<Assignment*> stack;
 };
 
 #endif //PROJECT_2_SOLVERCLASS_H

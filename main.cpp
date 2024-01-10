@@ -8,7 +8,7 @@ int Literal::count = 0;
 int Clause::count = 0;
 unordered_map<int, Literal*> Literal::list = {};
 vector<Clause*> Clause::list = {};
-stack<Assignment> Assignment::stack = {};
+stack<Assignment*> Assignment::stack = {};
 unordered_set<int> Literal::id_list = {};
 queue<Literal*> Literal::unit_queue= {};
 bool Clause::conflict = false;
@@ -79,10 +79,11 @@ void unitPropagation() {
         Literal* next_literal = Literal::unit_queue.front();
         Literal::unit_queue.pop();
         Clause* unit_clause = next_literal->reason;
+        bool isForced = true;
         // check if the literal is positive or negative in the unit clause to assign fitting value
         if (find(unit_clause->pos_literals_list.begin(), unit_clause->pos_literals_list.end(), next_literal) != unit_clause->pos_literals_list.end()) {
-            next_literal->assignValue(true);
-        } else next_literal->assignValue(false) ;
+            next_literal->assignValue(true, isForced);
+        } else next_literal->assignValue(false, isForced) ;
     }
 }
 
