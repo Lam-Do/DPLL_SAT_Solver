@@ -25,6 +25,9 @@ void checkBasicUNSAT();
 
 // Global definition
 bool isForced = true;
+bool isSAT = false;
+bool isUNSAT = true;
+
 int main() {
     vector<vector<int>> formula = {
             {1, 2, 3},
@@ -90,16 +93,21 @@ void unitPropagation() {
 }
 
 void backtracking() {
-    // TODO: Undo assignment
-    while (Assignment::stack.top()->isForced) {
+    // Backtracking in case conflict flag
+    while (!Assignment::stack.empty() && Assignment::stack.top()->isForced) {
         Assignment::stack.top()->assigned_literal->unassignValue();
         Assignment::stack.pop();
     }
-    Literal* top_literal = Assignment::stack.top()->assigned_literal;
-    bool old_value = top_literal->value;
-    top_literal->unassignValue();
-    Assignment::stack.pop();
-    top_literal->assignValue(!old_value, isForced); // no need to push new assignment here since assignValue() does it.
+    if (!Assignment::stack.empty()) {
+        Literal* top_literal = Assignment::stack.top()->assigned_literal;
+        bool old_value = top_literal->value;
+        top_literal->unassignValue();
+        Assignment::stack.pop();
+        top_literal->assignValue(!old_value, isForced); // no need to push new assignment here since assignValue() does it.
+        Clause::conflict = false; // remove conflict flag
+    } else {
+        isUNSAT = true; // flag UNSAT in case stack is empty meaning all assignments is forced and there isn't any another branch
+    }
 }
 
 void simplify() {
@@ -112,6 +120,8 @@ void pureLiteralsEliminate() {
 
 void branching() {
     // TODO: branching in case unit_queue is empty (no unit clause) and also no conflict.
+
+
 }
 
 void checkBasicUNSAT(){

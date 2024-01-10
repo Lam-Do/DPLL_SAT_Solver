@@ -31,7 +31,7 @@ void Literal::assignValue(bool value, bool isForced) {
                     free_literal->reason = clause;
                 }
                 if (clause->getUnsetLiteralsCount() == 0 && !clause->SAT) {
-                    //report conflict
+                    //report conflict when a clause has no free literal but still UNSAT
                     Clause::conflict = true;
                 }
             }
