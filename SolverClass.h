@@ -8,6 +8,7 @@
 #include <queue>
 #include <algorithm>
 #include <unordered_map>
+#include <climits>
 
 class Clause;
 class Literal;
@@ -24,21 +25,22 @@ public:
     Clause* reason = nullptr;
 
     static int count;
-    static std::unordered_map<int, Literal*> list;
+    static std::unordered_map<int, Literal*> unorderedMap;
     static std::unordered_set<int> id_list;
     static std::queue<Literal*> unit_queue;
 
     explicit Literal(int id) : id(id) {
         count++;
-        list[this->id] = this;
+        unorderedMap[this->id] = this;
         id_list.insert(id);
     };
     void setFree();
     void assignValue(bool,bool);
     void unassignValue();
 
-private:
+    int getActualPosOcc(int);
 
+    int getActualNegOcc(int);
 };
 
 class Clause {

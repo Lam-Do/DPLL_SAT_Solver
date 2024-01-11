@@ -6,7 +6,7 @@ using namespace std;
 // Declare static variable
 int Literal::count = 0;
 int Clause::count = 0;
-unordered_map<int, Literal*> Literal::list = {};
+unordered_map<int, Literal*> Literal::unorderedMap = {};
 vector<Clause*> Clause::list = {};
 stack<Assignment*> Assignment::stack = {};
 unordered_set<int> Literal::id_list = {};
@@ -18,15 +18,17 @@ vector<vector<int>> readDIMACS(string& path);
 void parse(const vector<vector<int>>& formula);
 void unitPropagation();
 void backtracking();
-void simplify();
 void pureLiteralsEliminate();
 void branching();
+void simplify();
 void checkBasicUNSAT();
+
+tuple<Literal *, bool> heuristicMOM();
 
 // Global definition
 bool isForced = true;
 bool isSAT = false;
-bool isUNSAT = true;
+bool isUNSAT = false;
 
 int main() {
     vector<vector<int>> formula = {
@@ -66,7 +68,7 @@ void parse(const vector<vector<int>>& formula) {
                     new_clause.appendLiteral(&literal, false);
                 }
             } else {
-                Literal* current_literal = Literal::list[abs(l)];
+                Literal* current_literal = Literal::unorderedMap[abs(l)];
                 if (l >= 0) {
                     current_literal->pos_occ.insert(&new_clause);
                     new_clause.appendLiteral(current_literal, true);
@@ -110,18 +112,51 @@ void backtracking() {
     }
 }
 
-void simplify() {
-    // TODO: impliment simplify technique here
-}
 
 void pureLiteralsEliminate() {
-    // TODO: assign value to all pure literal with forced assignment, pureLit can appear after clauses are SAT and remove from consideration.
+    // TODO: assign value to all pure literals with forced assignment, pureLit can appear after clauses are SAT and remove from consideration.
+
 }
 
 void branching() {
-    // TODO: branching in case unit_queue is empty (no unit clause) and also no conflict.
+    // TODO: branching in case unit_queue is empty (no unit clause) and also no conflict, SAT or UNSAT flag
+    if (!isSAT && !isUNSAT && Literal::unit_queue.empty() && !Clause::conflict) {
+        tuple<Literal*, bool> t = heuristicMOM(); // use MOM heuristic to choose branching literal
+        std::get<0>(t)->assignValue(std::get<1>(t), !isForced);
+    }
+}
 
+std::tuple<Literal*, bool> heuristicMOM() {
+    // check all clauses for the shortest
+    Clause* shortest_clause = nullptr;
+    int shortest_width = INT_MAX;
+    for (auto c : Clause::list) {
+        int clause_actual_width = c->unset_literals.size();
+        if (!c->SAT && clause_actual_width < shortest_width) {
+            shortest_width = clause_actual_width;
+            shortest_clause = c;
+        }
+    }
 
+    //choose literal
+    Literal* chosen_literal = nullptr;
+    int n = INT_MIN;
+    bool value = true;
+    for (auto l : shortest_clause->unset_literals) {
+        int actual_pos_occ = l->getActualPosOcc(shortest_width); // get number occ of literal in clauses with the exact shortest_width
+        int actual_neg_occ = l->getActualNegOcc(shortest_width);
+        int v = (actual_pos_occ + actual_neg_occ) * 2 ^ 1 + actual_pos_occ * actual_neg_occ;
+        if (v > n) {
+            n = v;
+            chosen_literal = l;
+            value = (actual_pos_occ >= actual_neg_occ) ? true : false;
+        }
+    }
+    return std::make_tuple(chosen_literal, value);
+}
+
+void simplify() {
+    // TODO: impliment simplify technique here
 }
 
 void checkBasicUNSAT(){

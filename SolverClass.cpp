@@ -26,7 +26,7 @@ void Literal::assignValue(bool value, bool isForced) {
             for (auto clause : this->neg_occ) {
                 clause->unset_literals.erase(this);
                 if (clause->getUnsetLiteralsCount() == 1 && !clause->SAT) {
-                    auto free_literal = *(clause->unset_literals.begin()); // Last unset literal in the list
+                    auto free_literal = *(clause->unset_literals.begin()); // Last unset literal in the unorderedMap
                     Literal::unit_queue.push(free_literal);
                     free_literal->reason = clause;
                 }
@@ -83,6 +83,26 @@ void Literal::unassignValue() {
             clause->unset_literals.insert(this);
         }
     }
+}
+
+int Literal::getActualPosOcc(int w) {
+    int occ = 0;
+    for (auto c : this->pos_occ) {
+        if (!c->SAT && c->unset_literals.size() == w) {
+            occ++;
+        }
+    }
+    return occ;
+}
+
+int Literal::getActualNegOcc(int w) {
+    int occ = 0;
+    for (auto c : this->neg_occ) {
+        if (!c->SAT && c->unset_literals.size() == w) {
+            occ++;
+        }
+    }
+    return occ;
 }
 
 void Clause::appendLiteral(Literal* literal_ad, bool isPos) {
