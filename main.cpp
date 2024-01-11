@@ -101,10 +101,17 @@ void backtracking() {
         Assignment::stack.pop();
     }
     if (!Assignment::stack.empty()) {
+        // Save value of the top assignment before assigning new one which push a new assignment to top of stack
         Literal* top_literal = Assignment::stack.top()->assigned_literal;
         bool old_value = top_literal->value;
+
         top_literal->unassignValue();
         Assignment::stack.pop();
+
+        while (!Literal::unit_queue.empty()) {
+            Literal::unit_queue.pop();
+        }
+
         top_literal->assignValue(!old_value, isForced); // no need to push new assignment here since assignValue() does it.
         Clause::conflict = false; // remove conflict flag
     } else {
@@ -114,12 +121,21 @@ void backtracking() {
 
 
 void pureLiteralsEliminate() {
-    // TODO: assign value to all pure literals with forced assignment, pureLit can appear after clauses are SAT and remove from consideration.
-
+    // assign value to all pure literals with forced assignment, pureLit can appear after clauses are SAT and remove from consideration.
+    for (const auto& id2ad : Literal::unorderedMap) {
+        Literal* l = id2ad.second;
+        if (l->isFree) {
+            if (l->getActualPosOcc(INT_MAX) == 0) {
+                l->assignValue(false, isForced);
+            } else if (l->getActualNegOcc(INT_MAX) == 0) {
+                l->assignValue(true, isForced);
+            }
+        }
+    }
 }
 
 void branching() {
-    // TODO: branching in case unit_queue is empty (no unit clause) and also no conflict, SAT or UNSAT flag
+    // branching in case unit_queue is empty (no unit clause) and also no conflict, SAT or UNSAT flag
     if (!isSAT && !isUNSAT && Literal::unit_queue.empty() && !Clause::conflict) {
         tuple<Literal*, bool> t = heuristicMOM(); // use MOM heuristic to choose branching literal
         std::get<0>(t)->assignValue(std::get<1>(t), !isForced);
@@ -157,9 +173,11 @@ std::tuple<Literal*, bool> heuristicMOM() {
 
 void simplify() {
     // TODO: impliment simplify technique here
+    checkBasicUNSAT();
 }
 
 void checkBasicUNSAT(){
     // TODO: check basic unSAT condition
     // TODO: check a clause contain a literal both pos and neg
+
 }

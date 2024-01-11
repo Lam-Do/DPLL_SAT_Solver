@@ -22,7 +22,7 @@ public:
     std::unordered_set<Clause*> pos_occ;
     std::unordered_set<Clause*> neg_occ;
     int branching_level_dp;
-    Clause* reason = nullptr;
+    Clause* reason = nullptr; // the clause which has this as the last unset literal, use in unitPropagation to trace back necessary value for assigning.
 
     static int count;
     static std::unordered_map<int, Literal*> unorderedMap;
