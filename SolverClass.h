@@ -61,9 +61,9 @@ public:
         list.push_back(this);
     };
     void appendLiteral(Literal*, bool);
-    bool checkSAT();
     int getUnsetLiteralsCount() const;
 
+    static bool checkSAT();
 };
 
 struct Assignment {
@@ -73,6 +73,8 @@ struct Assignment {
     Assignment(bool status, Literal* lit) : isForced(status), assigned_literal(lit) {stack.push(this);};
 
     static std::stack<Assignment*> stack;
+
+    static void printAll();
 };
 
 #endif //PROJECT_2_SOLVERCLASS_H

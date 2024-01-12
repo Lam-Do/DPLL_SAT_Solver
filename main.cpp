@@ -22,8 +22,8 @@ void pureLiteralsEliminate();
 void branching();
 void simplify();
 void removeSATClauses();
-
 tuple<Literal *, bool> heuristicMOM();
+void removeUnitClauses();
 
 // Global definition
 bool isForced = true;
@@ -37,11 +37,33 @@ int main() {
             {1, -2, 3}
     };
     //read DIMACS file, return formula in vector<vector<int>>
+    //string path;
+    //vector<vector<int>> formula = readDIMACS(path);
 
     // parse formula into data structure
     parse(formula);
-    cout << Literal::count << " " << Clause::count << endl;
-
+    simplify();
+    while (!isSAT && !isUNSAT) {
+        unitPropagation();
+        if (Literal::unit_queue.empty()) {
+            pureLiteralsEliminate();
+        }
+        if (Clause::conflict) {
+            backtracking();
+        }
+        if (!isSAT && !isUNSAT && Literal::unit_queue.empty() && !Clause::conflict) {
+            branching();
+        }
+        isSAT = Clause::checkSAT();
+    }
+    if (isSAT) {
+        cout << "The problem is satisfiable!" << "\n";
+        Assignment::printAll();
+    } else if (isUNSAT) {
+        cout << "The problem is unsatisfiable!" << "\n";
+    } else {
+        cout << "Time run out!" << "\n";
+    }
     return 0;
 }
 
@@ -136,10 +158,8 @@ void pureLiteralsEliminate() {
 
 void branching() {
     // branching in case unit_queue is empty (no unit clause) and also no conflict, SAT or UNSAT flag
-    if (!isSAT && !isUNSAT && Literal::unit_queue.empty() && !Clause::conflict) {
-        tuple<Literal*, bool> t = heuristicMOM(); // use MOM heuristic to choose branching literal
-        std::get<0>(t)->assignValue(std::get<1>(t), !isForced);
-    }
+    tuple<Literal*, bool> t = heuristicMOM(); // use MOM heuristic to choose branching literal
+    std::get<0>(t)->assignValue(std::get<1>(t), !isForced);
 }
 
 std::tuple<Literal*, bool> heuristicMOM() {
@@ -186,6 +206,17 @@ unordered_set<T> findIntersection(const unordered_set<T>& s1, unordered_set<T>& 
 void simplify() {
     // TODO: impliment simplify technique here
     removeSATClauses();
+    removeUnitClauses();
+}
+
+void removeUnitClauses() {
+    for (const auto& c : Clause::list) {
+        if (c->unset_literals.size() == 1) {
+            Literal* l = *(c->unset_literals.begin());
+            if (c->pos_literals_list.empty()) {l->assignValue(false, isForced);}
+            else {l->assignValue(true, isForced);}
+        }
+    }
 }
 
 void removeSATClauses(){

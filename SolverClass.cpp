@@ -1,3 +1,4 @@
+#include <iostream>
 #include "SolverClass.h"
 
 void Literal::setFree() {
@@ -115,17 +116,20 @@ void Clause::appendLiteral(Literal* literal_ad, bool isPos) {
 }
 
 bool Clause::checkSAT() {
-    for (const auto literal : this->pos_literals_list) {
-        if (!(literal->isFree)) {
-            if (literal->value) return true;
-        }
+    for (const auto& c : Clause::list) {
+        if (!c->SAT) {return false;}
     }
-    for (const auto literal : this->neg_literals_list) {
-        if (!(literal->isFree)){
-            if (!(literal->value)) return true;
-        }
-    }
-    return false;
+    return true;
 }
 
 int Clause::getUnsetLiteralsCount() const {return this->unset_literals.size();}
+
+void Assignment::printAll() {
+    while (!Assignment::stack.empty()) {
+        Literal* l = Assignment::stack.top()->assigned_literal;
+        std::cout << "Literal " << l->id << ": " << l->value << " by ";
+        if (Assignment::stack.top()->isForced) {std::cout << "forcing" << "\n";}
+        else {std::cout << "branching" << "\n";}
+        Assignment::stack.pop();
+    }
+}
