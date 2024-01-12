@@ -21,7 +21,7 @@ void backtracking();
 void pureLiteralsEliminate();
 void branching();
 void simplify();
-void checkBasicUNSAT();
+void removeSATClauses();
 
 tuple<Literal *, bool> heuristicMOM();
 
@@ -53,7 +53,7 @@ vector<vector<int>> readDIMACS(string& path) {
 
 void parse(const vector<vector<int>>& formula) {
     for (const auto& c : formula){
-        Clause new_clause;
+        Clause new_clause(Clause::count);
         for (const auto l : c) {
             if (Literal::id_list.count(abs(l)) == 0) {
                 if (l >= 0) {
@@ -171,13 +171,41 @@ std::tuple<Literal*, bool> heuristicMOM() {
     return std::make_tuple(chosen_literal, value);
 }
 
-void simplify() {
-    // TODO: impliment simplify technique here
-    checkBasicUNSAT();
+template<typename T>
+unordered_set<T> findIntersection(const unordered_set<T>& s1, unordered_set<T>& s2) {
+    unordered_set<T> intersection;
+
+    for (const T& e : s1) {
+        if (s2.find(e) != s2.end()) {
+            intersection.insert(e);
+        }
+    }
+    return intersection;
 }
 
-void checkBasicUNSAT(){
-    // TODO: check basic unSAT condition
-    // TODO: check a clause contain a literal both pos and neg
+void simplify() {
+    // TODO: impliment simplify technique here
+    removeSATClauses();
+}
 
+void removeSATClauses(){
+    // check basic SAT condition
+    // check a clause contain a literal both pos and neg
+    for (const auto& id2ad : Literal::unorderedMap) {
+        Literal* literal = id2ad.second;
+        // a literal appear both pos and neg in a clause, that clause is alway SAT, can remove from the process.
+        unordered_set<Clause*> intersect = findIntersection(literal->pos_occ, literal->neg_occ);
+        if (!intersect.empty()) {
+            for (auto c : intersect) {
+                Clause::list.erase(Clause::list.begin() + c->id - 1);
+                // erase in all connected literals
+                for (auto l : c->pos_literals_list) {
+                    l->pos_occ.erase(c);
+                }
+                for (auto l : c->neg_literals_list) {
+                    l->neg_occ.erase(c);
+                }
+            }
+        }
+    }
 }

@@ -45,6 +45,7 @@ public:
 
 class Clause {
 public:
+    const int id;
     std::vector<Literal*> pos_literals_list;
     std::vector<Literal*> neg_literals_list;
     std::unordered_set<Literal*> unset_literals = {};
@@ -55,7 +56,7 @@ public:
     static std::vector<Clause*> list;
     static bool conflict;
 
-    Clause() {
+    explicit Clause(int id) : id(id) {
         count++;
         list.push_back(this);
     };
