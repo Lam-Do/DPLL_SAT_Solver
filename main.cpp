@@ -68,6 +68,7 @@ int main() {
 }
 
 vector<vector<int>> readDIMACS(string& path) {
+    // TODO: read DIMACS file and return in vector form
     vector<vector<int>> formula;
 
     return formula;

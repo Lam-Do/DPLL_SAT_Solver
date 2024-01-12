@@ -125,11 +125,12 @@ bool Clause::checkSAT() {
 int Clause::getUnsetLiteralsCount() const {return this->unset_literals.size();}
 
 void Assignment::printAll() {
-    while (!Assignment::stack.empty()) {
-        Literal* l = Assignment::stack.top()->assigned_literal;
+    std::stack<Assignment*> s = Assignment::stack;
+    while (!s.empty()) {
+        Literal* l = s.top()->assigned_literal;
         std::cout << "Literal " << l->id << ": " << l->value << " by ";
-        if (Assignment::stack.top()->isForced) {std::cout << "forcing" << "\n";}
+        if (s.top()->isForced) {std::cout << "forcing" << "\n";}
         else {std::cout << "branching" << "\n";}
-        Assignment::stack.pop();
+        s.pop();
     }
 }
