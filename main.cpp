@@ -2,19 +2,20 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <chrono>
 #include "SolverClass.h"
 
 using namespace std;
 
 // Declare static variable
 int Literal::count = 0;
-int Clause::count = 0;
 unordered_map<int, Literal*> Literal::unorderedMap = {};
-vector<Clause*> Clause::list = {};
-stack<Assignment*> Assignment::stack = {};
 unordered_set<int> Literal::id_list = {};
 queue<Literal*> Literal::unit_queue= {};
+int Clause::count = 0;
 bool Clause::conflict = false;
+vector<Clause*> Clause::list = {};
+stack<Assignment*> Assignment::stack = {};
 
 // Declare function
 vector<vector<int>> readDIMACS(const string& path);
@@ -27,7 +28,7 @@ void simplify();
 void removeSATClauses();
 tuple<Literal *, bool> heuristicMOM();
 void removeUnitClauses();
-void runDPLL();
+void runDPLL(const std::string&);
 void reset();
 
 // Global definition
@@ -36,47 +37,64 @@ bool isSAT = false;
 bool isUNSAT = false;
 int num_Clause = 0;
 int num_Variable= 0;
+std::chrono::duration<double, std::milli> run_time = std::chrono::high_resolution_clock::duration::zero();
 
 int main() {
-    //runDPLL();
+    string path;
+    string s;
+    cout << R"(Solving multiple SAT instances ("y" to run on a folder or "n" to run on a single file): )" << "\n";
+    cin >> s;
+    if (s == "y") {
+        cout << "Please enter the directory to the folder: " << "\n";
+        cin >> path;
+    } else if (s == "n") {
+        cout << "Please enter the directory to the file: " << "\n";
+        cin >> path;
+        //runDPLL(path);
+    } else {
+        cerr << "Invalid input!" << endl;
+    }
     return 0;
 }
 
-void runDPLL() {
-    vector<vector<int>> formula = {
-            {1, 2, 3},
-            {-1, -2, 3},
-            {1, -2, 3}
-    };
-    //read DIMACS file, return formula in vector<vector<int>>
-    string path;
-    //vector<vector<int>> formula = readDIMACS(path);
+void runDPLL(const std::string& path) {
+    auto start_time = std::chrono::high_resolution_clock::now();
 
-    // parse formula into data structure
-    parse(formula);
-    simplify();
-    while (!isSAT && !isUNSAT) {
-        unitPropagation();
-        if (Literal::unit_queue.empty()) {
-            pureLiteralsEliminate();
+    //read DIMACS file, return formula in vector<vector<int>>
+    vector<vector<int>> formula = readDIMACS(path);
+
+    if (!formula.empty()) {
+        // parse formula into data structure
+        parse(formula);
+        simplify();
+        while (!isSAT && !isUNSAT && run_time.count() < 60000) {
+            unitPropagation();
+            if (Literal::unit_queue.empty()) {
+                pureLiteralsEliminate();
+            }
+            if (Clause::conflict) {
+                backtracking();
+            }
+            if (!isSAT && !isUNSAT && Literal::unit_queue.empty() && !Clause::conflict) {
+                branching();
+            }
+            isSAT = Clause::checkSAT();
+            run_time = std::chrono::high_resolution_clock::now() - start_time;
         }
-        if (Clause::conflict) {
-            backtracking();
+        if (isSAT) {
+            cout << "The problem is satisfiable!" << "\n";
+            Assignment::printAll();
+        } else if (isUNSAT) {
+            cout << "The problem is unsatisfiable!" << "\n";
+        } else {
+            cout << "Time run out!" << "\n";
         }
-        if (!isSAT && !isUNSAT && Literal::unit_queue.empty() && !Clause::conflict) {
-            branching();
-        }
-        isSAT = Clause::checkSAT();
-    }
-    if (isSAT) {
-        cout << "The problem is satisfiable!" << "\n";
-        Assignment::printAll();
-    } else if (isUNSAT) {
-        cout << "The problem is unsatisfiable!" << "\n";
-    } else {
-        cout << "Time run out!" << "\n";
-    }
-    reset();
+        reset();
+    } else if (formula.empty()) {cerr << "File at " << path << " is empty!" << endl;}
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    run_time = end_time - start_time;
+    std::cout << "Runtime: " << run_time.count() << "ms" << endl;
 }
 
 void reset() {
@@ -94,6 +112,7 @@ void reset() {
     isUNSAT = false;
     num_Clause = 0;
     num_Variable= 0;
+    run_time = std::chrono::high_resolution_clock::duration::zero();
 }
 
 vector<vector<int>> readDIMACS(const string& file_name) {
