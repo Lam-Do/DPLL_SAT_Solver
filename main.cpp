@@ -1,4 +1,7 @@
 #include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include "SolverClass.h"
 
 using namespace std;
@@ -14,7 +17,7 @@ queue<Literal*> Literal::unit_queue= {};
 bool Clause::conflict = false;
 
 // Declare function
-vector<vector<int>> readDIMACS(string& path);
+vector<vector<int>> readDIMACS(const string& path);
 void parse(const vector<vector<int>>& formula);
 void unitPropagation();
 void backtracking();
@@ -24,20 +27,29 @@ void simplify();
 void removeSATClauses();
 tuple<Literal *, bool> heuristicMOM();
 void removeUnitClauses();
+void runDPLL();
+void reset();
 
 // Global definition
-bool isForced = true;
+const bool isForced = true;
 bool isSAT = false;
 bool isUNSAT = false;
+int num_Clause = 0;
+int num_Variable= 0;
 
 int main() {
+    //runDPLL();
+    return 0;
+}
+
+void runDPLL() {
     vector<vector<int>> formula = {
             {1, 2, 3},
             {-1, -2, 3},
             {1, -2, 3}
     };
     //read DIMACS file, return formula in vector<vector<int>>
-    //string path;
+    string path;
     //vector<vector<int>> formula = readDIMACS(path);
 
     // parse formula into data structure
@@ -64,13 +76,66 @@ int main() {
     } else {
         cout << "Time run out!" << "\n";
     }
-    return 0;
+    reset();
 }
 
-vector<vector<int>> readDIMACS(string& path) {
-    // TODO: read DIMACS file and return in vector form
+void reset() {
+    // TODO: destroy or reset all static and global variable and data
+    Literal::count = 0;
+    Literal::id_list.clear();
+    Literal::unorderedMap.clear();
+    while (!Literal::unit_queue.empty()){Literal::unit_queue.pop();}
+    Clause::count = 0;
+    Clause::list.clear();
+    Clause::conflict = false;
+    while (!Assignment::stack.empty()) {Assignment::stack.pop();}
+
+    isSAT = false;
+    isUNSAT = false;
+    num_Clause = 0;
+    num_Variable= 0;
+}
+
+vector<vector<int>> readDIMACS(const string& file_name) {
+    // read DIMACS file and return in matrix form
+    std::ifstream file(file_name);
+
+    if (!file.is_open()) {
+        std::cerr << "Error opening file " << file_name << std::endl;
+        return {};
+    }
+
     vector<vector<int>> formula;
 
+    std::string line;
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+        std::string token;
+        iss >> token; // first word/number of the line;
+
+        if (token == "c") { // comment
+            continue;
+        } else if (token == "p") {
+            iss >> token; // "cnf"
+            if (!(token == "cnf")) {
+                std::cerr << "Error reading cnf format" << std::endl;
+                return {};
+            } else {
+                iss >> token;
+                num_Variable = std::stoi(token);
+                iss >> token;
+                num_Clause = std::stoi(token);
+            }
+        } else { // not c or p
+            int variable = std::stoi(token);
+            formula.emplace_back(vector<int> {}); // new empty clause
+            formula.back().emplace_back(variable); // add first variable
+            while (iss >> token) {
+                variable = std::stoi(token);
+                formula.back().emplace_back(variable);
+            }
+        }
+    }
     return formula;
 }
 

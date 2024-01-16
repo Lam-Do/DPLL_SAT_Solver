@@ -58,7 +58,7 @@ public:
 
     explicit Clause(int id) : id(id) {
         count++;
-        list.push_back(this);
+        list.emplace_back(this);
     };
     void appendLiteral(Literal*, bool);
     int getUnsetLiteralsCount() const;
