@@ -34,7 +34,7 @@ void printAllData();
 
 // Global definition
 const int MAX_RUN_TIME = 60000;
-const bool printProcess = true;
+const bool printProcess = false;
 
 const bool isForced = true;
 bool isSAT = false;
@@ -57,7 +57,7 @@ int main() {
     } else {
         cerr << "Invalid input!" << endl;
     }*/
-    path = "D:\\Lam\\Study\\Infomatik\\LMU\\WS2324\\SAT Solving\\Project 2\\test\\sat\\unit.cnf";
+    path = "D:\\Lam\\Study\\Infomatik\\LMU\\WS2324\\SAT Solving\\Project 2\\test\\unsat\\parity5.cnf";
         runDPLL(path);
     return 0;
 }
@@ -189,7 +189,7 @@ void parse(const vector<vector<int>>& formula) {
         auto* new_clause = new Clause(Clause::count);
         new_clause->updateStaticData();
         for (auto l : c) {
-            if (Literal::id_list.count(abs(l)) == 0) {
+            if (Literal::id_list.count(abs(l)) == 0) { // new literal
                 if (l >= 0) {
                     auto* new_literal = new Literal(abs(l));
                     new_literal->updateStaticData();
@@ -198,6 +198,7 @@ void parse(const vector<vector<int>>& formula) {
                     new_clause->appendLiteral(new_literal, true);
                 } else {
                     auto* new_literal = new Literal(abs(l));
+                    new_literal->updateStaticData();
                     // connecting literals and clauses
                     new_literal->neg_occ.insert(new_clause);
                     new_clause->appendLiteral(new_literal, false);
@@ -240,7 +241,7 @@ void unitPropagation() {
 
 void backtracking() {
     // Backtracking in case conflict flag
-    if (printProcess) Assignment::printAll();
+    Assignment::printAll();
     while (!Assignment::stack.empty() && Assignment::stack.top()->isForced) {
         Assignment::stack.top()->assigned_literal->unassignValue();
         Assignment::stack.pop();
@@ -279,7 +280,6 @@ void pureLiteralsEliminate() {
             }
         }
     }
-    if (printProcess) cout << "Finished pure literal eliminating..." << endl;
 }
 
 void branching() {
@@ -307,7 +307,6 @@ std::tuple<Literal*, bool> heuristicMOM() {
     int n = INT_MIN;
     bool value = true;
     if (shortest_clause != nullptr) {
-        cout << "Shortest clause: " << shortest_clause->id << "\n";
         //choose literal using MOM formula with alpha = 1
         for (auto l : shortest_clause->unset_literals) {
             int actual_pos_occ = l->getActualPosOcc(shortest_width); // get number occ of literal in clauses with the exact shortest_width

@@ -7,12 +7,10 @@ void Literal::setFree() {
 }
 
 void Literal::assignValue(bool value, bool isForced) {
-    std::cout << "Assign literal " << this->id << " value " << value << "\n";
     //assign value and free status
-    if (!this->isFree) {
-        // literals could be pushed to queue more than once when they are the last unset literal of more than one clause.
-        // do nothing, skip assigning value process if the literal is not free
-    } else {
+    // literals could be pushed to unit_queue more than once when they are the last unset literal of more than one UNSAT clauses.
+    // do nothing, skip assigning value process if the literal is not free
+    if (this->isFree == true) {
         this->isFree = false;
         this->value = value;
         Assignment* new_assign = new Assignment(isForced, this);
@@ -148,17 +146,6 @@ bool Clause::checkSAT() {
 
 int Clause::getUnsetLiteralsCount() const {return this->unset_literals.size();}
 
-void Assignment::printAll() {
-    std::stack<Assignment*> s = Assignment::stack;
-    while (!s.empty()) {
-        Literal* l = s.top()->assigned_literal;
-        std::cout << "Literal " << l->id << ": " << l->value << " by ";
-        if (s.top()->isForced) {std::cout << "forcing" << "\n";}
-        else {std::cout << "branching" << "\n";}
-        s.pop();
-    }
-}
-
 void Clause::printData() {
     std::cout << "Clause " << this->id << " at " << this <<" -";;
     std::cout << " pos_literals:";
@@ -184,4 +171,23 @@ void Clause::printData() {
 void Clause::updateStaticData() {
     Clause::count++;
     Clause::list.emplace_back(this);
+}
+
+
+void Assignment::printAll() {
+    std::stack<Assignment*> s = Assignment::stack;
+    std::stack<Assignment*> reversed_stack;
+    while (!s.empty()) {
+        reversed_stack.push(s.top());
+        s.pop();
+    }
+    while (!reversed_stack.empty()) {
+        Literal* l = reversed_stack.top()->assigned_literal;
+        std::cout << "[" << l->id << "|" << l->value << "|";
+        if (reversed_stack.top()->isForced) {std::cout << "f]";}
+        else {std::cout << "b]";}
+        std::cout << "-";
+        reversed_stack.pop();
+    }
+    std::cout<<std::endl;
 }
