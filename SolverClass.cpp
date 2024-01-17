@@ -15,7 +15,7 @@ void Literal::assignValue(bool value, bool isForced) {
     } else {
         this->isFree = false;
         this->value = value;
-        Assignment new_assign (isForced, this);
+        Assignment* new_assign = new Assignment(isForced, this);
 
         // change related clauses accordingly
         //std::unordered_set<Clause*> sat_clauses;

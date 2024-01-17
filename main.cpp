@@ -71,7 +71,7 @@ void runDPLL(const std::string& path) {
     if (!formula.empty()) {
         // parse formula into data structure
         parse(formula);
-        /*simplify();
+        simplify();
         while (!isSAT && !isUNSAT && run_time.count() < MAX_RUN_TIME) {
             unitPropagation();
             if (Literal::unit_queue.empty()) {
@@ -84,7 +84,7 @@ void runDPLL(const std::string& path) {
                 branching();
             }
             isSAT = Clause::checkSAT();
-            run_time = std::chrono::high_resolution_clock::now() - start_time; // check runtime
+            run_time = std::chrono::high_resolution_clock::now() - start_time; // update runtime
         }
         if (isSAT) {
             cout << "The problem is satisfiable!" << "\n";
@@ -94,7 +94,7 @@ void runDPLL(const std::string& path) {
         } else {
             cout << "Time run out!" << "\n";
         }
-        reset();*/
+        reset();
     } else if (formula.empty()) {
         //cerr << "File at " << path << " is empty or error opening!" << endl;
     }
@@ -106,6 +106,7 @@ void runDPLL(const std::string& path) {
 
 void reset() {
     // destroy or reset all static and global variable and data
+    if (printProcess) cout << "Data reseted" << endl;
     Literal::count = 0;
     Literal::id_list.clear();
     Literal::unorderedMap.clear();
@@ -285,7 +286,7 @@ void branching() {
     // branching in case unit_queue is empty (no unit clause) and also no conflict, SAT or UNSAT flag
     if (printProcess) cout << "Start branching " << "\n";
     tuple<Literal*, bool> t = heuristicMOM(); // use MOM heuristic to choose branching literal
-    std::get<0>(t)->assignValue(std::get<1>(t), !isForced);
+    if (std::get<0>(t) != nullptr) std::get<0>(t)->assignValue(std::get<1>(t), !isForced); // only assign if find a literal
     if (printProcess) cout << "Finished branching " << endl;
 }
 
@@ -302,18 +303,21 @@ std::tuple<Literal*, bool> heuristicMOM() {
         }
     }
 
-    //choose literal
     Literal* chosen_literal = nullptr;
     int n = INT_MIN;
     bool value = true;
-    for (auto l : shortest_clause->unset_literals) {
-        int actual_pos_occ = l->getActualPosOcc(shortest_width); // get number occ of literal in clauses with the exact shortest_width
-        int actual_neg_occ = l->getActualNegOcc(shortest_width);
-        int v = (actual_pos_occ + actual_neg_occ) * 2 ^ 1 + actual_pos_occ * actual_neg_occ;
-        if (v > n) {
-            n = v;
-            chosen_literal = l;
-            value = (actual_pos_occ >= actual_neg_occ) ? true : false;
+    if (shortest_clause != nullptr) {
+        cout << "Shortest clause: " << shortest_clause->id << "\n";
+        //choose literal using MOM formula with alpha = 1
+        for (auto l : shortest_clause->unset_literals) {
+            int actual_pos_occ = l->getActualPosOcc(shortest_width); // get number occ of literal in clauses with the exact shortest_width
+            int actual_neg_occ = l->getActualNegOcc(shortest_width);
+            int v = (actual_pos_occ + actual_neg_occ) * 2 ^ 1 + actual_pos_occ * actual_neg_occ;
+            if (v > n) {
+                n = v;
+                chosen_literal = l;
+                value = (actual_pos_occ >= actual_neg_occ) ? true : false;
+            }
         }
     }
     return std::make_tuple(chosen_literal, value);
