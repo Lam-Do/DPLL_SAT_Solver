@@ -12,7 +12,7 @@ int Literal::count = 0;
 unordered_map<int, Literal*> Literal::unorderedMap = {};
 unordered_set<int> Literal::id_list = {};
 queue<Literal*> Literal::unit_queue= {};
-int Clause::count = 0;
+int Clause::count = 1; // clauses uses this for id
 bool Clause::conflict = false;
 vector<Clause*> Clause::list = {};
 stack<Assignment*> Assignment::stack = {};
@@ -30,8 +30,12 @@ tuple<Literal *, bool> heuristicMOM();
 void removeUnitClauses();
 void runDPLL(const std::string&);
 void reset();
+void printAllData();
 
 // Global definition
+const int MAX_RUN_TIME = 60000;
+const bool printProcess = true;
+
 const bool isForced = true;
 bool isSAT = false;
 bool isUNSAT = false;
@@ -41,19 +45,20 @@ std::chrono::duration<double, std::milli> run_time = std::chrono::high_resolutio
 
 int main() {
     string path;
-    string s;
-    cout << R"(Solving multiple SAT instances ("y" to run on a folder or "n" to run on a single file): )" << "\n";
-    cin >> s;
+    /*string s;
+    cout << R"(Solve multiple SAT instances ("y" to run on a folder or "n" to run on a single file)?: )" << "\n";
+    getline(cin, s);
     if (s == "y") {
         cout << "Please enter the directory to the folder: " << "\n";
-        cin >> path;
+        getline(cin, path);
     } else if (s == "n") {
         cout << "Please enter the directory to the file: " << "\n";
-        cin >> path;
-        //runDPLL(path);
+        getline(cin, path);
     } else {
         cerr << "Invalid input!" << endl;
-    }
+    }*/
+    path = "D:\\Lam\\Study\\Infomatik\\LMU\\WS2324\\SAT Solving\\Project 2\\test\\sat\\unit.cnf";
+        runDPLL(path);
     return 0;
 }
 
@@ -66,8 +71,8 @@ void runDPLL(const std::string& path) {
     if (!formula.empty()) {
         // parse formula into data structure
         parse(formula);
-        simplify();
-        while (!isSAT && !isUNSAT && run_time.count() < 60000) {
+        /*simplify();
+        while (!isSAT && !isUNSAT && run_time.count() < MAX_RUN_TIME) {
             unitPropagation();
             if (Literal::unit_queue.empty()) {
                 pureLiteralsEliminate();
@@ -79,7 +84,7 @@ void runDPLL(const std::string& path) {
                 branching();
             }
             isSAT = Clause::checkSAT();
-            run_time = std::chrono::high_resolution_clock::now() - start_time;
+            run_time = std::chrono::high_resolution_clock::now() - start_time; // check runtime
         }
         if (isSAT) {
             cout << "The problem is satisfiable!" << "\n";
@@ -89,8 +94,10 @@ void runDPLL(const std::string& path) {
         } else {
             cout << "Time run out!" << "\n";
         }
-        reset();
-    } else if (formula.empty()) {cerr << "File at " << path << " is empty!" << endl;}
+        reset();*/
+    } else if (formula.empty()) {
+        //cerr << "File at " << path << " is empty or error opening!" << endl;
+    }
 
     auto end_time = std::chrono::high_resolution_clock::now();
     run_time = end_time - start_time;
@@ -98,7 +105,7 @@ void runDPLL(const std::string& path) {
 }
 
 void reset() {
-    // TODO: destroy or reset all static and global variable and data
+    // destroy or reset all static and global variable and data
     Literal::count = 0;
     Literal::id_list.clear();
     Literal::unorderedMap.clear();
@@ -117,17 +124,19 @@ void reset() {
 
 vector<vector<int>> readDIMACS(const string& file_name) {
     // read DIMACS file and return in matrix form
-    std::ifstream file(file_name);
+    std::ifstream infile(file_name);
 
-    if (!file.is_open()) {
+    if (!infile.is_open()) {
         std::cerr << "Error opening file " << file_name << std::endl;
         return {};
+    } else if (infile.is_open() && printProcess) {
+        cout << "File opened" << endl;
     }
 
     vector<vector<int>> formula;
 
     std::string line;
-    while (std::getline(file, line)) {
+    while (std::getline(infile, line)) {
         std::istringstream iss(line);
         std::string token;
         iss >> token; // first word/number of the line;
@@ -145,51 +154,76 @@ vector<vector<int>> readDIMACS(const string& file_name) {
                 iss >> token;
                 num_Clause = std::stoi(token);
             }
-        } else { // not c or p
+        } else if (token == "0") {
+            continue;
+        } else { // not c or p or 0
             int variable = std::stoi(token);
             formula.emplace_back(vector<int> {}); // new empty clause
             formula.back().emplace_back(variable); // add first variable
             while (iss >> token) {
+                if (token == "0") {
+                    break;
+                }
                 variable = std::stoi(token);
                 formula.back().emplace_back(variable);
             }
+        }
+    }
+    if (printProcess) {
+        cout << "Finished read file " << file_name << endl;
+        cout << "Solving SAT instance: " << "\n";
+        for (auto c : formula) {
+            for (auto v : c) {
+                cout << v << " ";
+            }
+            cout << "\n";
         }
     }
     return formula;
 }
 
 void parse(const vector<vector<int>>& formula) {
+    if (printProcess) cout << "Start parsing..."<<"\n";
     for (const auto& c : formula){
-        Clause new_clause(Clause::count);
-        for (const auto l : c) {
+        auto* new_clause = new Clause(Clause::count);
+        new_clause->updateStaticData();
+        for (auto l : c) {
             if (Literal::id_list.count(abs(l)) == 0) {
                 if (l >= 0) {
-                    Literal new_literal (abs(l));
+                    auto* new_literal = new Literal(abs(l));
+                    new_literal->updateStaticData();
                     // connecting literals and clauses
-                    new_literal.pos_occ.insert(&new_clause);
-                    new_clause.appendLiteral(&new_literal, true);
+                    new_literal->pos_occ.insert(new_clause);
+                    new_clause->appendLiteral(new_literal, true);
                 } else {
-                    Literal literal (abs(l));
+                    auto* new_literal = new Literal(abs(l));
                     // connecting literals and clauses
-                    literal.neg_occ.insert(&new_clause);
-                    new_clause.appendLiteral(&literal, false);
+                    new_literal->neg_occ.insert(new_clause);
+                    new_clause->appendLiteral(new_literal, false);
                 }
             } else {
-                Literal* current_literal = Literal::unorderedMap[abs(l)];
+                auto* current_literal = Literal::unorderedMap[abs(l)];
                 if (l >= 0) {
-                    current_literal->pos_occ.insert(&new_clause);
-                    new_clause.appendLiteral(current_literal, true);
+                    current_literal->pos_occ.insert(new_clause);
+                    new_clause->appendLiteral(current_literal, true);
                 } else {
-                    current_literal->neg_occ.insert(&new_clause);
-                    new_clause.appendLiteral(current_literal, false);
+                    current_literal->neg_occ.insert(new_clause);
+                    new_clause->appendLiteral(current_literal, false);
                 }
             }
         }
+    }
+    if (printProcess) {
+        cout << "Number of literals: " << Literal::unorderedMap.size() << "\n";
+        cout << "Number of clauses: " << Clause::list.size() << "\n";
+        printAllData();
+        cout<<"Finish parsing"<<"\n";
     }
 }
 
 void unitPropagation() {
     // find and propagate all literal in queue by assigning value
+    if (printProcess) cout << "Unit propagating..." << "\n";
     while (!(Literal::unit_queue.empty())) {
         Literal* next_literal = Literal::unit_queue.front();
         Literal::unit_queue.pop();
@@ -197,12 +231,15 @@ void unitPropagation() {
         // check if the literal is positive or negative in the unit clause to assign fitting value
         if (find(unit_clause->pos_literals_list.begin(), unit_clause->pos_literals_list.end(), next_literal) != unit_clause->pos_literals_list.end()) {
             next_literal->assignValue(true, isForced);
-        } else next_literal->assignValue(false, isForced) ;
+        } else {
+            next_literal->assignValue(false, isForced);
+        }
     }
 }
 
 void backtracking() {
     // Backtracking in case conflict flag
+    if (printProcess) Assignment::printAll();
     while (!Assignment::stack.empty() && Assignment::stack.top()->isForced) {
         Assignment::stack.top()->assigned_literal->unassignValue();
         Assignment::stack.pop();
@@ -224,11 +261,13 @@ void backtracking() {
     } else {
         isUNSAT = true; // flag UNSAT in case stack is empty meaning all assignments is forced and there isn't any another branch
     }
+    if (printProcess) cout << "Finished backtracking" << endl;
 }
 
 
 void pureLiteralsEliminate() {
     // assign value to all pure literals with forced assignment, pureLit can appear after clauses are SAT and remove from consideration.
+    if (printProcess) cout << "Pure literal eliminating..." << "\n";
     for (const auto& id2ad : Literal::unorderedMap) {
         Literal* l = id2ad.second;
         if (l->isFree) {
@@ -239,16 +278,20 @@ void pureLiteralsEliminate() {
             }
         }
     }
+    if (printProcess) cout << "Finished pure literal eliminating..." << endl;
 }
 
 void branching() {
     // branching in case unit_queue is empty (no unit clause) and also no conflict, SAT or UNSAT flag
+    if (printProcess) cout << "Start branching " << "\n";
     tuple<Literal*, bool> t = heuristicMOM(); // use MOM heuristic to choose branching literal
     std::get<0>(t)->assignValue(std::get<1>(t), !isForced);
+    if (printProcess) cout << "Finished branching " << endl;
 }
 
 std::tuple<Literal*, bool> heuristicMOM() {
     // check all clauses for the shortest
+    if (printProcess) cout << "Using heuristic MOM" << "\n";
     Clause* shortest_clause = nullptr;
     int shortest_width = INT_MAX;
     for (auto c : Clause::list) {
@@ -277,11 +320,11 @@ std::tuple<Literal*, bool> heuristicMOM() {
 }
 
 template<typename T>
-unordered_set<T> findIntersection(const unordered_set<T>& s1, unordered_set<T>& s2) {
+unordered_set<T> findIntersection(const unordered_set<T>& s1, const unordered_set<T>& s2) {
     unordered_set<T> intersection;
 
     for (const T& e : s1) {
-        if (s2.find(e) != s2.end()) {
+        if (s2.count(e)) {
             intersection.insert(e);
         }
     }
@@ -289,12 +332,14 @@ unordered_set<T> findIntersection(const unordered_set<T>& s1, unordered_set<T>& 
 }
 
 void simplify() {
-    // TODO: impliment simplify technique here
+    if (printProcess) cout << "Start simplifying" << "\n";
     removeSATClauses();
     removeUnitClauses();
+    if (printProcess) cout << "Finish simplifying" << endl;
 }
 
 void removeUnitClauses() {
+    if (printProcess) cout << "Finding initial unit clauses ..." << "\n";
     for (const auto& c : Clause::list) {
         if (c->unset_literals.size() == 1) {
             Literal* l = *(c->unset_literals.begin());
@@ -307,12 +352,14 @@ void removeUnitClauses() {
 void removeSATClauses(){
     // check basic SAT condition
     // check a clause contain a literal both pos and neg
+    if (printProcess) cout << "Finding SAT clauses..." << "\n";
     for (const auto& id2ad : Literal::unorderedMap) {
         Literal* literal = id2ad.second;
         // a literal appear both pos and neg in a clause, that clause is alway SAT, can remove from the process.
         unordered_set<Clause*> intersect = findIntersection(literal->pos_occ, literal->neg_occ);
         if (!intersect.empty()) {
             for (auto c : intersect) {
+                if (printProcess) cout << "Clause " << c->id << " is SAT."<< "\n";
                 Clause::list.erase(Clause::list.begin() + c->id - 1);
                 // erase in all connected literals
                 for (auto l : c->pos_literals_list) {
@@ -323,5 +370,14 @@ void removeSATClauses(){
                 }
             }
         }
+    }
+}
+
+void printAllData() {
+    for (auto t : Literal::unorderedMap) {
+        t.second->printData();
+    }
+    for (auto c : Clause::list) {
+        c->printData();
     }
 }

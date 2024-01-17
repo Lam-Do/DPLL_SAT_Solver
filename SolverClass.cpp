@@ -1,4 +1,5 @@
 #include <iostream>
+#include <ostream>
 #include "SolverClass.h"
 
 void Literal::setFree() {
@@ -6,6 +7,7 @@ void Literal::setFree() {
 }
 
 void Literal::assignValue(bool value, bool isForced) {
+    std::cout << "Assign literal " << this->id << " value " << value << "\n";
     //assign value and free status
     if (!this->isFree) {
         // literals could be pushed to queue more than once when they are the last unset literal of more than one clause.
@@ -106,6 +108,28 @@ int Literal::getActualNegOcc(int w) {
     return occ;
 }
 
+void Literal::printData() {
+    std::cout << "Literal " << this->id << " at " << this <<" -";
+    if (this->isFree) std::cout << " free";
+    else std::cout << " assigned";
+    std::cout << " - pos_occ:";
+    for (auto c : this->pos_occ) {
+        std::cout << " " << c->id << ",";
+    }
+    std::cout << " - neg_occ:";
+    for (auto c : this->neg_occ) {
+        std::cout << " " << c->id << ",";
+    }
+    if (this->reason == nullptr) std::cout << " - satisfy no clause " << std::endl;
+    else std::cout << " - satisfy clause " << this->reason->id << std::endl;
+}
+
+void Literal::updateStaticData() {
+    Literal::count++;
+    Literal::unorderedMap[this->id] = this;
+    Literal::id_list.insert(id);
+}
+
 void Clause::appendLiteral(Literal* literal_ad, bool isPos) {
     if (isPos) {
         this->pos_literals_list.push_back(literal_ad);
@@ -133,4 +157,31 @@ void Assignment::printAll() {
         else {std::cout << "branching" << "\n";}
         s.pop();
     }
+}
+
+void Clause::printData() {
+    std::cout << "Clause " << this->id << " at " << this <<" -";;
+    std::cout << " pos_literals:";
+    for (auto l : this->pos_literals_list) {
+        std::cout << " " << l->id << ",";
+    }
+    std::cout << " - neg_literals:";
+    for (auto l : this->neg_literals_list) {
+        std::cout << " -" << l->id << ",";
+    }
+    std::cout << " - current unassigned literals:";
+    for (auto l : this->unset_literals) {
+        std::cout << " " << l->id << ",";
+    }
+    if (this->SAT) {
+        std::cout << " - satisfy by:";
+        for (auto l : this->sat_by) {
+            std::cout << " " << l->id << ",";
+        }
+    } else std::cout << " - UNSAT" << std::endl;
+}
+
+void Clause::updateStaticData() {
+    Clause::count++;
+    Clause::list.emplace_back(this);
 }

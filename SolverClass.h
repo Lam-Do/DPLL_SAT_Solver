@@ -29,14 +29,12 @@ public:
     static std::unordered_set<int> id_list;
     static std::queue<Literal*> unit_queue;
 
-    explicit Literal(int id) : id(id) {
-        count++;
-        unorderedMap[this->id] = this;
-        id_list.insert(id);
-    };
+    explicit Literal(int id) : id(id) {};
     void setFree();
     void assignValue(bool,bool);
     void unassignValue();
+    void printData();
+    void updateStaticData();
 
     int getActualPosOcc(int);
 
@@ -56,12 +54,11 @@ public:
     static std::vector<Clause*> list;
     static bool conflict;
 
-    explicit Clause(int id) : id(id) {
-        count++;
-        list.emplace_back(this);
-    };
+    explicit Clause(int id) : id(id) {};
     void appendLiteral(Literal*, bool);
     int getUnsetLiteralsCount() const;
+    void printData();
+    void updateStaticData();
 
     static bool checkSAT();
 };
