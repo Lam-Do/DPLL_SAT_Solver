@@ -3,9 +3,11 @@
 #include <sstream>
 #include <string>
 #include <chrono>
+//#include <experimental/filesystem>
 #include "SolverClass.h"
 
 using namespace std;
+//namespace fs = std::experimental::filesystem;
 
 // Declare static variable
 int Literal::count = 0;
@@ -16,6 +18,7 @@ int Clause::count = 1; // clauses uses this for id
 bool Clause::conflict = false;
 vector<Clause*> Clause::list = {};
 stack<Assignment*> Assignment::stack = {};
+vector<stack<Assignment*>> Assignment::assignment_history = {};
 
 // Declare function
 vector<vector<int>> readDIMACS(const string& path);
@@ -33,8 +36,8 @@ void reset();
 void printAllData();
 
 // Global definition
-const int MAX_RUN_TIME = 60000;
-const bool printProcess = false;
+const int MAX_RUN_TIME = 60000; // Determine max runtime for solver, in milisecond.
+const bool printProcess = false; // variable enable output data to console for monitoring solving process
 
 const bool isForced = true;
 bool isSAT = false;
@@ -51,17 +54,25 @@ int main() {
     if (s == "y") {
         cout << "Please enter the directory to the folder: " << "\n";
         getline(cin, path);
+        vector<string> files;
+        for (const auto& entry : fs::directory_iterator(path)) {
+            cout << entry.path() << endl;
+        }
     } else if (s == "n") {
-        cout << "Please enter the directory to the file: " << "\n";
-        getline(cin, path);
     } else {
         cerr << "Invalid input!" << endl;
     }*/
-    path = "D:\\Lam\\Study\\Infomatik\\LMU\\WS2324\\SAT Solving\\Project 2\\test\\unsat\\parity5.cnf";
+        cout << "Please enter the full directory to the file: " << "\n";
+        getline(cin, path);
         runDPLL(path);
     return 0;
 }
 
+/**
+ * run DPLL solver on a file with DIMACS format in CNF form
+ *
+ * @param path  Directory of DIMACS file, require a full directory, could be plattform sensitive.
+*/
 void runDPLL(const std::string& path) {
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -86,13 +97,19 @@ void runDPLL(const std::string& path) {
             isSAT = Clause::checkSAT();
             run_time = std::chrono::high_resolution_clock::now() - start_time; // update runtime
         }
+
+        // Output result
         if (isSAT) {
             cout << "The problem is satisfiable!" << "\n";
             Assignment::printAll();
+            //Assignment::printHistory();
         } else if (isUNSAT) {
             cout << "The problem is unsatisfiable!" << "\n";
+            Assignment::printAll();
+            //Assignment::printHistory();
         } else {
             cout << "Time run out!" << "\n";
+            Assignment::printAll();
         }
         reset();
     } else if (formula.empty()) {
@@ -104,8 +121,10 @@ void runDPLL(const std::string& path) {
     std::cout << "Runtime: " << run_time.count() << "ms" << endl;
 }
 
+/**
+ * Reset all static and global variable, this only necessary in case solver is used multiple times in a single project run.
+*/
 void reset() {
-    // destroy or reset all static and global variable and data
     if (printProcess) cout << "Data reseted" << endl;
     Literal::count = 0;
     Literal::id_list.clear();
@@ -115,6 +134,7 @@ void reset() {
     Clause::list.clear();
     Clause::conflict = false;
     while (!Assignment::stack.empty()) {Assignment::stack.pop();}
+    Assignment::assignment_history.clear();
 
     isSAT = false;
     isUNSAT = false;
@@ -123,8 +143,12 @@ void reset() {
     run_time = std::chrono::high_resolution_clock::duration::zero();
 }
 
+/**
+ * Read DIMACS file and parse to vector of vector form
+ * @param file_name file's name or path to the file
+ * @return SAT instance type vector<vector<int>>
+ */
 vector<vector<int>> readDIMACS(const string& file_name) {
-    // read DIMACS file and return in matrix form
     std::ifstream infile(file_name);
 
     if (!infile.is_open()) {
@@ -142,26 +166,27 @@ vector<vector<int>> readDIMACS(const string& file_name) {
         std::string token;
         iss >> token; // first word/number of the line;
 
-        if (token == "c") { // comment
+        if (token == "c") { // comments will be ignored
             continue;
         } else if (token == "p") {
             iss >> token; // "cnf"
-            if (!(token == "cnf")) {
+            if (!(token == "cnf")) { // only read CNF form
                 std::cerr << "Error reading cnf format" << std::endl;
                 return {};
             } else {
+                // parse number of variables and clauses
                 iss >> token;
                 num_Variable = std::stoi(token);
                 iss >> token;
                 num_Clause = std::stoi(token);
             }
-        } else if (token == "0") {
+        } else if (token == "0") { // if the line start with 0, will also be ignored
             continue;
-        } else { // not c or p or 0
+        } else { // not c or p or 0, if file in correct format, this should be a number presenting variable or literal
             int variable = std::stoi(token);
             formula.emplace_back(vector<int> {}); // new empty clause
             formula.back().emplace_back(variable); // add first variable
-            while (iss >> token) {
+            while (iss >> token) { // if not end of the line
                 if (token == "0") {
                     break;
                 }
@@ -183,6 +208,10 @@ vector<vector<int>> readDIMACS(const string& file_name) {
     return formula;
 }
 
+/**
+ * parse all clauses and literals from the SAT instance to data structures
+ * @param formula SAT instance
+ */
 void parse(const vector<vector<int>>& formula) {
     if (printProcess) cout << "Start parsing..."<<"\n";
     for (const auto& c : formula){
@@ -215,6 +244,8 @@ void parse(const vector<vector<int>>& formula) {
             }
         }
     }
+
+    // Print out all parsed data
     if (printProcess) {
         cout << "Number of literals: " << Literal::unorderedMap.size() << "\n";
         cout << "Number of clauses: " << Clause::list.size() << "\n";
@@ -222,9 +253,10 @@ void parse(const vector<vector<int>>& formula) {
         cout<<"Finish parsing"<<"\n";
     }
 }
-
+/**
+ * find and propagate all literal in unit_queue and assign value to these literal by force
+ */
 void unitPropagation() {
-    // find and propagate all literal in queue by assigning value
     if (printProcess) cout << "Unit propagating..." << "\n";
     while (!(Literal::unit_queue.empty())) {
         Literal* next_literal = Literal::unit_queue.front();
@@ -239,8 +271,13 @@ void unitPropagation() {
     }
 }
 
+/**
+ * Backtracking in case conflict flag is raised.
+ * Print all assigned literals.
+ * The stack which use to store assigning data will be pop until found an assignment by branching, else raise UNSAT flag that signal ending process
+ * Literals will be unassigned its value in process.
+ */
 void backtracking() {
-    // Backtracking in case conflict flag
     Assignment::printAll();
     while (!Assignment::stack.empty() && Assignment::stack.top()->isForced) {
         Assignment::stack.top()->assigned_literal->unassignValue();
@@ -266,9 +303,11 @@ void backtracking() {
     if (printProcess) cout << "Finished backtracking" << endl;
 }
 
-
+/**
+ * Assign value to all pure literals, which have at the moment of calling function only positive or negative occurrences in UNSAT clauses, with forced assignment.
+ * Pure literals can appear during process after remove SAT clauses are SAT from consideration.
+ */
 void pureLiteralsEliminate() {
-    // assign value to all pure literals with forced assignment, pureLit can appear after clauses are SAT and remove from consideration.
     if (printProcess) cout << "Pure literal eliminating..." << "\n";
     for (const auto& id2ad : Literal::unorderedMap) {
         Literal* l = id2ad.second;
@@ -281,15 +320,22 @@ void pureLiteralsEliminate() {
         }
     }
 }
-
+/**
+ * Branching in case unit_queue is empty (no unit clause), no conflict, no SAT or UNSAT flag.
+ * Function using heuristics to choose a literal then assign value.
+ */
 void branching() {
-    // branching in case unit_queue is empty (no unit clause) and also no conflict, SAT or UNSAT flag
     if (printProcess) cout << "Start branching " << "\n";
     tuple<Literal*, bool> t = heuristicMOM(); // use MOM heuristic to choose branching literal
     if (std::get<0>(t) != nullptr) std::get<0>(t)->assignValue(std::get<1>(t), !isForced); // only assign if find a literal
     if (printProcess) cout << "Finished branching " << endl;
 }
 
+/**
+ * This heuristic choose clause with the smallest number of unassigned literals.
+ * Value is chosen base on number of positive or negative occurrences.
+ * @return A tuple of (pointer to chosen literal, value)
+ */
 std::tuple<Literal*, bool> heuristicMOM() {
     // check all clauses for the shortest
     if (printProcess) cout << "Using heuristic MOM" << "\n";
@@ -322,6 +368,13 @@ std::tuple<Literal*, bool> heuristicMOM() {
     return std::make_tuple(chosen_literal, value);
 }
 
+/**
+ * Find intersection between two unordered set of type T
+ * @tparam T Any type
+ * @param s1 First set
+ * @param s2 Second set
+ * @return Unordered set of elements which both inputted sets contain.
+ */
 template<typename T>
 unordered_set<T> findIntersection(const unordered_set<T>& s1, const unordered_set<T>& s2) {
     unordered_set<T> intersection;
@@ -334,6 +387,9 @@ unordered_set<T> findIntersection(const unordered_set<T>& s1, const unordered_se
     return intersection;
 }
 
+/**
+ * Implement some techniques to simplify SAT instance.
+ */
 void simplify() {
     if (printProcess) cout << "Start simplifying" << "\n";
     removeSATClauses();
@@ -341,6 +397,9 @@ void simplify() {
     if (printProcess) cout << "Finish simplifying" << endl;
 }
 
+/**
+ * Any unit clause with one literal will have that literal assign value by force
+ */
 void removeUnitClauses() {
     if (printProcess) cout << "Finding initial unit clauses ..." << "\n";
     for (const auto& c : Clause::list) {
@@ -352,6 +411,9 @@ void removeUnitClauses() {
     }
 }
 
+/**
+ * Clauses having at least literal occur in both positive and negative are SAT by default and will be removed
+ */
 void removeSATClauses(){
     // check basic SAT condition
     // check a clause contain a literal both pos and neg
@@ -376,6 +438,10 @@ void removeSATClauses(){
     }
 }
 
+/**
+ * Print all data saving in data structure Literal and Clause.
+ * Function is not use if variable printProcess is not set to "true";
+ */
 void printAllData() {
     for (auto t : Literal::unorderedMap) {
         t.second->printData();
