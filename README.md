@@ -60,7 +60,7 @@ Please enter the full directory to the file:
 
 ```
 
-Enter the full directory (not just from the working directory) to the DIMACS file that wanted to be solved. There aren't implementations for adapting the directory, the suitable pattern of the directory needs to be input 
+Enter the full directory (not just from the working directory) to the DIMACS file that wanted to be solved. There aren't implementations for adapting the directory, the suitable pattern of the directory needs to be input. 
 Windows uses `\` while Linux or Mac uses `/`. Example for Windows.
 ```
 D:\...\path\to\Project 2\foldername\file_name.cnf
