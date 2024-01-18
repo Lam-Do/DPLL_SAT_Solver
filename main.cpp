@@ -3,11 +3,11 @@
 #include <sstream>
 #include <string>
 #include <chrono>
-//#include <experimental/filesystem>
+#include <filesystem>
 #include "SolverClass.h"
 
 using namespace std;
-//namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 // Declare static variable
 int Literal::count = 0;
@@ -19,6 +19,7 @@ bool Clause::conflict = false;
 vector<Clause*> Clause::list = {};
 stack<Assignment*> Assignment::stack = {};
 vector<stack<Assignment*>> Assignment::assignment_history = {};
+bool Assignment::enablePrintAll = true;
 
 // Declare function
 vector<vector<int>> readDIMACS(const string& path);
@@ -48,23 +49,27 @@ std::chrono::duration<double, std::milli> run_time = std::chrono::high_resolutio
 
 int main() {
     string path;
-    /*string s;
+    string select;
     cout << R"(Solve multiple SAT instances ("y" to run on a folder or "n" to run on a single file)?: )" << "\n";
-    getline(cin, s);
-    if (s == "y") {
-        cout << "Please enter the directory to the folder: " << "\n";
+    getline(cin, select);
+    if (select == "y") {
+        cout << "Please enter the full directory to the folder: " << "\n";
         getline(cin, path);
-        vector<string> files;
-        for (const auto& entry : fs::directory_iterator(path)) {
-            cout << entry.path() << endl;
+        cout << R"(Do you want to disable printing all assignments history("y" to disable)?: )" << endl;
+        getline(cin, select);
+        if (select == "y") Assignment::enablePrintAll = false;
+        for (const auto & entry : fs::directory_iterator(path)) {
+            std::cout << entry.path().string() << std::endl;
+            runDPLL(entry.path().string());
+            std::cout << "-------------------------" << endl;
         }
-    } else if (s == "n") {
-    } else {
-        cerr << "Invalid input!" << endl;
-    }*/
+    } else if (select == "n") {
         cout << "Please enter the full directory to the file: " << "\n";
         getline(cin, path);
         runDPLL(path);
+    } else {
+        cerr << "Invalid input!" << endl;
+    }
     return 0;
 }
 
@@ -278,6 +283,8 @@ void unitPropagation() {
  * Literals will be unassigned its value in process.
  */
 void backtracking() {
+    std::cout << "\n";
+    std::cout << "----------------" << "\n";
     Assignment::printAll();
     while (!Assignment::stack.empty() && Assignment::stack.top()->isForced) {
         Assignment::stack.top()->assigned_literal->unassignValue();

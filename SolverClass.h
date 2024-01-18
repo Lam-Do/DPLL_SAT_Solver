@@ -74,6 +74,7 @@ struct Assignment {
 
     static std::stack<Assignment*> stack;
     static std::vector<std::stack<Assignment*>> assignment_history; // Not used variable
+    static bool enablePrintAll;
 
     static void printAll();
     static void printHistory();

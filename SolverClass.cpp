@@ -225,22 +225,24 @@ void Clause::updateStaticData() {
  * Print all assignment in the stack without changing the stack.
  */
 void Assignment::printAll() {
-    std::stack<Assignment*> s = Assignment::stack;
-    std::stack<Assignment*> reversed_stack;
-    while (!s.empty()) {
-        reversed_stack.push(s.top());
-        s.pop();
+    if (Assignment::enablePrintAll) {
+        std::stack<Assignment*> s = Assignment::stack;
+        std::stack<Assignment*> reversed_stack;
+        while (!s.empty()) {
+            reversed_stack.push(s.top());
+            s.pop();
+        }
+        Assignment::assignment_history.emplace_back(reversed_stack);
+        while (!reversed_stack.empty()) {
+            Literal* l = reversed_stack.top()->assigned_literal;
+            std::cout << "[" << l->id << "|" << l->value << "|";
+            if (reversed_stack.top()->isForced) {std::cout << "f]";}
+            else {std::cout << "b]";}
+            std::cout << "-";
+            reversed_stack.pop();
+        }
+        std::cout<<std::endl;
     }
-    Assignment::assignment_history.emplace_back(reversed_stack);
-    while (!reversed_stack.empty()) {
-        Literal* l = reversed_stack.top()->assigned_literal;
-        std::cout << "[" << l->id << "|" << l->value << "|";
-        if (reversed_stack.top()->isForced) {std::cout << "f]";}
-        else {std::cout << "b]";}
-        std::cout << "-";
-        reversed_stack.pop();
-    }
-    std::cout<<std::endl;
 }
 
 /**
