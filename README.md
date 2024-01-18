@@ -5,13 +5,14 @@ This project is developed using C++14 with IDE Clion 2022.2.4 on Windows 10. Due
 Besides reading the input directory for the DIMACS file, the program doesn't have other platform-sensitive implementations—Further explanation down below.
 
 ## Install C++ and compiler/IDE
-C++14 is the minimal version required to run the project. To install compiler for C++.
+C++14 is the minimal version required to run the project. To install a compiler for C++.
 
 On macOS: Open the terminal and run this command using Xcode Command Line Tools:
-'''
+
+```
 xcode-select --install
 
-'''
+```
 
 On Linux(Debian/Ubuntu): Open the terminal and run this command using GCC(GNU Compiler Collection)
 '''
