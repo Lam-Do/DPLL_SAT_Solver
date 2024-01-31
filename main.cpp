@@ -116,7 +116,6 @@ void runDPLL(const std::string& path) {
             cout << "Time run out!" << "\n";
             Assignment::printAll();
         }
-        reset();
     } else if (formula.empty()) {
         //cerr << "File at " << path << " is empty or error opening!" << endl;
     }
@@ -124,6 +123,7 @@ void runDPLL(const std::string& path) {
     auto end_time = std::chrono::high_resolution_clock::now();
     run_time = end_time - start_time;
     std::cout << "Runtime: " << run_time.count() << "ms" << endl;
+    reset();
 }
 
 /**
@@ -283,8 +283,10 @@ void unitPropagation() {
  * Literals will be unassigned its value in process.
  */
 void backtracking() {
-    std::cout << "\n";
-    std::cout << "----------------" << "\n";
+    if (Assignment::enablePrintAll) {
+        std::cout << "\n";
+        std::cout << "----------------" << "\n";
+    }
     Assignment::printAll();
     while (!Assignment::stack.empty() && Assignment::stack.top()->isForced) {
         Assignment::stack.top()->assigned_literal->unassignValue();
